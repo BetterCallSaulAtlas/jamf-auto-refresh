@@ -16,7 +16,12 @@ A userscript that adds an auto-refresh widget to the Jamf Pro sidebar, with a us
 
 ## Version History
 
-### v1.7.0 (Latest)
+### v1.7.1 (Latest)
+- 🔧 **Fix URL Matching** - Added wildcard to match all pages, not just root
+- ✨ Added support for `atlassian.jamfcloud.com` domain
+- 🐛 Fixed issue where script wouldn't load on Jamf instances
+
+### v1.7.0
 - 🎯 **Perfect Native Integration** - Widget now perfectly mimics Jamf's native sidebar items
 - ✨ Uses exact styling from native items (padding: 8px, height: 28px, gap: 12px)
 - ✨ Matches native icon styling with proper SVG refresh icon

@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         Jamf Auto Refresh (Sidebar Widget)
 // @namespace    Charlie Chimp
-// @version      1.7.0
+// @version      1.7.1
 // @author       BetterCallSaul <sherman@atlassian.com>
 // @description  Automatically refreshes the current page at a user-selectable interval with native Jamf Pro sidebar integration and countdown timer.
-// @match        https://pke.atlassian.com/
+// @match        https://pke.atlassian.com/*
+// @match        https://atlassian.jamfcloud.com/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
