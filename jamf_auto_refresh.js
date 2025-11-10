@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Jamf Auto Refresh (Toggle + Timer, Draggable Top-Right)
+// @name         Jamf Auto Refresh (Sidebar Widget)
 // @namespace    Charlie Chimp
-// @version      1.5.0
+// @version      1.6.0
 // @author       BetterCallSaul <sherman@atlassian.com>
-// @description  Automatically refreshes the current page at a user-selectable interval with native Jamf Pro navigation integration and countdown timer.
+// @description  Automatically refreshes the current page at a user-selectable interval with native Jamf Pro sidebar integration and countdown timer.
 // @match        https://pke.atlassian.com/
 // @grant        none
 // @run-at       document-idle
@@ -186,67 +186,54 @@
     return searchShadowRoots(document);
   }
 
-  function waitForNavigation() {
+  function waitForSidebar() {
     return new Promise((resolve) => {
       let attempts = 0;
       const maxAttempts = 300; // ~30 seconds
 
-      const checkNav = () => {
-        // Log shadow roots found
-        if (attempts === 0) {
-          const shadowRootCount = document.querySelectorAll('*').length;
-          const hasShadowRoot = Array.from(document.querySelectorAll('*')).some(el => el.shadowRoot);
-          console.log(`[Jamf Auto-Refresh] Attempt ${attempts}: Elements=${shadowRootCount}, HasShadowRoot=${hasShadowRoot}`);
-          
-          // Log what's in jp-skeleton shadow root
-          const jpSkeleton = document.querySelector('jp-skeleton');
-          if (jpSkeleton && jpSkeleton.shadowRoot) {
-            const jamfNavTop = jpSkeleton.shadowRoot.querySelector('.jamf-nav-top-container');
-            console.log('[Jamf Auto-Refresh] jp-skeleton shadowRoot has .jamf-nav-top-container:', !!jamfNavTop);
-            if (jamfNavTop) {
-              console.log('[Jamf Auto-Refresh] Found it! Class:', jamfNavTop.className);
-            }
-          }
-        }
-
-        // Look for jp-skeleton first, then search its shadow root
+      const checkSidebar = () => {
+        // Look for jp-skeleton first, then search its shadow root for sidebar
         const jpSkeleton = document.querySelector('jp-skeleton');
         if (jpSkeleton && jpSkeleton.shadowRoot) {
-          const jamfNavTop = jpSkeleton.shadowRoot.querySelector('.jamf-nav-top-container');
-          if (jamfNavTop) {
-            console.log('[Jamf Auto-Refresh] Found .jamf-nav-top-container in jp-skeleton shadow root');
-            resolve(jamfNavTop);
+          // Try multiple sidebar selector patterns
+          const sidebar = jpSkeleton.shadowRoot.querySelector('.jamf-nav-left-container') ||
+                         jpSkeleton.shadowRoot.querySelector('[class*="nav-left"]') ||
+                         jpSkeleton.shadowRoot.querySelector('[class*="sidebar"]') ||
+                         jpSkeleton.shadowRoot.querySelector('aside') ||
+                         jpSkeleton.shadowRoot.querySelector('nav[class*="left"]');
+          
+          if (sidebar) {
+            console.log('[Jamf Auto-Refresh] Found sidebar in jp-skeleton shadow root:', sidebar.className);
+            resolve(sidebar);
             return;
           }
         }
 
-        // Fallback: Look for Jamf's top navigation container (checking shadow DOM)
-        let jamfNavTop = findInShadowDOM('.jamf-nav-top-container');
-        
-        if (!jamfNavTop) {
-          jamfNavTop = findInShadowDOM('[class*="jamf-nav-top"]') ||
-                       findInShadowDOM('.nav--items') ||
-                       findInShadowDOM('[class*="nav"][class*="items"]') ||
-                       document.querySelector('header nav') ||
-                       document.querySelector('header');
-        }
+        // Fallback: Search for sidebar in regular DOM and shadow DOM
+        let sidebar = findInShadowDOM('.jamf-nav-left-container') ||
+                     findInShadowDOM('[class*="nav-left"]') ||
+                     findInShadowDOM('[class*="sidebar"]') ||
+                     findInShadowDOM('aside[class*="nav"]') ||
+                     document.querySelector('aside') ||
+                     document.querySelector('.sidebar') ||
+                     document.querySelector('[class*="nav-left"]');
 
-        if (jamfNavTop) {
-          console.log('[Jamf Auto-Refresh] Found navigation element:', jamfNavTop.className || jamfNavTop.id || jamfNavTop.tagName);
-          resolve(jamfNavTop);
+        if (sidebar) {
+          console.log('[Jamf Auto-Refresh] Found sidebar element:', sidebar.className || sidebar.id || sidebar.tagName);
+          resolve(sidebar);
           return;
         }
 
         attempts += 1;
         if (attempts >= maxAttempts) {
-          console.error('[Jamf Auto-Refresh] Timed out waiting for navigation');
+          console.error('[Jamf Auto-Refresh] Timed out waiting for sidebar, using body as fallback');
           resolve(document.body);
           return;
         }
 
-        setTimeout(checkNav, 100);
+        setTimeout(checkSidebar, 100);
       };
-      checkNav();
+      checkSidebar();
     });
   }
 
@@ -274,62 +261,96 @@
   }
 
   async function createUI() {
-    const navContainer = await waitForNavigation();
+    const sidebarContainer = await waitForSidebar();
     
-    // Create the refresh icon container
+    // Create the refresh icon container (sidebar style)
     refreshContainer = document.createElement('div');
     refreshContainer.id = instanceId;
     refreshContainer.style.position = 'relative';
-    refreshContainer.style.display = 'inline-flex';
+    refreshContainer.style.display = 'flex';
     refreshContainer.style.alignItems = 'center';
-    refreshContainer.style.marginRight = '8px';
+    refreshContainer.style.justifyContent = 'space-between';
+    refreshContainer.style.padding = '12px 16px';
+    refreshContainer.style.margin = '8px 0';
     refreshContainer.style.cursor = 'pointer';
+    refreshContainer.style.borderRadius = '6px';
+    refreshContainer.style.transition = 'background 0.2s ease';
     
-    // Create the refresh icon (matches Jamf's other nav icons)
+    // Create content wrapper
+    const contentWrapper = document.createElement('div');
+    contentWrapper.style.display = 'flex';
+    contentWrapper.style.alignItems = 'center';
+    contentWrapper.style.gap = '12px';
+    contentWrapper.style.flex = '1';
+    
+    // Create the refresh icon
     refreshIcon = document.createElement('div');
     refreshIcon.innerHTML = '⟳'; // Refresh symbol
-    refreshIcon.style.fontSize = '18px';
+    refreshIcon.style.fontSize = '20px';
     refreshIcon.style.color = enabled ? '#22c55e' : '#6b7280';
-    refreshIcon.style.padding = '8px';
-    refreshIcon.style.borderRadius = '4px';
     refreshIcon.style.transition = 'all 0.2s ease';
+    refreshIcon.style.flexShrink = '0';
     refreshIcon.title = enabled 
       ? `Auto-refresh ON (${formatDuration(refreshIntervalMs)})` 
       : 'Auto-refresh OFF';
     
+    // Create label
+    const labelEl = document.createElement('div');
+    labelEl.style.display = 'flex';
+    labelEl.style.flexDirection = 'column';
+    labelEl.style.gap = '2px';
+    labelEl.style.flex = '1';
+    
+    const labelText = document.createElement('span');
+    labelText.textContent = 'Auto Refresh';
+    labelText.style.fontSize = '14px';
+    labelText.style.fontWeight = '500';
+    labelText.style.color = '#e2e8f0';
+    
+    const labelSubtext = document.createElement('span');
+    labelSubtext.className = 'refresh-label-subtext';
+    labelSubtext.style.fontSize = '11px';
+    labelSubtext.style.color = '#94a3b8';
+    labelSubtext.textContent = enabled ? formatDuration(refreshIntervalMs) : 'Disabled';
+    
+    labelEl.appendChild(labelText);
+    labelEl.appendChild(labelSubtext);
+    
+    contentWrapper.appendChild(refreshIcon);
+    contentWrapper.appendChild(labelEl);
+    
     // Hover effect
-    refreshIcon.addEventListener('mouseenter', () => {
-      refreshIcon.style.backgroundColor = 'rgba(255,255,255,0.1)';
+    refreshContainer.addEventListener('mouseenter', () => {
+      refreshContainer.style.backgroundColor = 'rgba(255,255,255,0.05)';
     });
-    refreshIcon.addEventListener('mouseleave', () => {
-      refreshIcon.style.backgroundColor = 'transparent';
+    refreshContainer.addEventListener('mouseleave', () => {
+      refreshContainer.style.backgroundColor = 'transparent';
     });
 
-    // Countdown badge (visible near icon)
+    // Countdown badge (visible on the right)
     navTimerBadge = document.createElement('span');
     navTimerBadge.className = 'refresh-timer-badge refresh-timer-nav';
-    navTimerBadge.style.position = 'absolute';
-    navTimerBadge.style.top = '0';
-    navTimerBadge.style.right = '0';
-    navTimerBadge.style.transform = 'translate(35%, -35%)';
-    navTimerBadge.style.padding = '2px 6px';
-    navTimerBadge.style.borderRadius = '9999px';
-    navTimerBadge.style.background = 'rgba(34,197,94,0.9)';
-    navTimerBadge.style.color = '#022c22';
-    navTimerBadge.style.fontSize = '11px';
+    navTimerBadge.style.padding = '4px 8px';
+    navTimerBadge.style.borderRadius = '12px';
+    navTimerBadge.style.background = 'rgba(34,197,94,0.15)';
+    navTimerBadge.style.color = '#22c55e';
+    navTimerBadge.style.fontSize = '12px';
     navTimerBadge.style.fontWeight = '600';
     navTimerBadge.style.fontVariantNumeric = 'tabular-nums';
-    navTimerBadge.style.boxShadow = '0 2px 6px rgba(0,0,0,0.25)';
     navTimerBadge.style.display = 'inline-flex';
     navTimerBadge.style.pointerEvents = 'none';
+    navTimerBadge.style.flexShrink = '0';
     navTimerBadge.textContent = '0:00';
-    refreshContainer.appendChild(navTimerBadge);
+    
+    contentWrapper.appendChild(navTimerBadge);
+    refreshContainer.appendChild(contentWrapper);
     
     // Create dropdown menu
     refreshDropdown = document.createElement('div');
     refreshDropdown.style.position = 'absolute';
-    refreshDropdown.style.top = '100%';
-    refreshDropdown.style.right = '0';
+    refreshDropdown.style.top = '0';
+    refreshDropdown.style.left = '100%';
+    refreshDropdown.style.marginLeft = '8px';
     refreshDropdown.style.width = '280px';
     refreshDropdown.style.background = '#1e293b';
     refreshDropdown.style.border = '1px solid rgba(255,255,255,0.15)';
@@ -437,6 +458,10 @@
       else nextRefreshAt = null;
       toggleBtn.textContent = enabled ? 'Disable Auto-refresh' : 'Enable Auto-refresh';
       toggleBtn.style.background = enabled ? '#ef4444' : '#22c55e';
+      // Update label subtext
+      if (window.__ccRefreshLabelSubtext) {
+        window.__ccRefreshLabelSubtext.textContent = enabled ? formatDuration(refreshIntervalMs) : 'Disabled';
+      }
       updateUI();
     });
     
@@ -493,6 +518,10 @@
         localStorage.setItem(STORAGE_KEY_INTERVAL, String(refreshIntervalMs));
         populateOptions(refreshIntervalMs);
         if (enabled) scheduleNext(refreshIntervalMs);
+        // Update label subtext
+        if (window.__ccRefreshLabelSubtext && enabled) {
+          window.__ccRefreshLabelSubtext.textContent = formatDuration(refreshIntervalMs);
+        }
         updateUI();
       }
     });
@@ -509,54 +538,49 @@
     // Store references for updates
     window.__ccRefreshSessionCounter = sessionCounterEl;
     window.__ccRefreshLastTimestamp = lastRefreshEl;
+    window.__ccRefreshLabelSubtext = labelSubtext;
     
-    // Click handler for icon
-    refreshIcon.addEventListener('click', toggleDropdown);
+    // Click handler for container
+    refreshContainer.addEventListener('click', toggleDropdown);
     
-    // Assemble container
-    refreshContainer.appendChild(refreshIcon);
+    // Assemble dropdown to container
     refreshContainer.appendChild(refreshDropdown);
     
-    // Find and insert into Jamf's top navigation (in shadow DOM)
-    const jamfNavTop = findInShadowDOM('.jamf-nav-top-container');
+    // Insert into sidebar
+    console.log('[Jamf Auto-Refresh] Sidebar container:', sidebarContainer?.className || sidebarContainer?.tagName || 'NOT FOUND');
     
-    console.log('[Jamf Auto-Refresh] jamfNavTop:', jamfNavTop?.className || 'NOT FOUND');
-    
-    if (!jamfNavTop) {
-      console.error('[Jamf Auto-Refresh] Could not find .jamf-nav-top-container');
+    if (!sidebarContainer || sidebarContainer === document.body) {
+      console.error('[Jamf Auto-Refresh] Could not find sidebar, falling back to body');
+      document.body.appendChild(refreshContainer);
+      refreshContainer.style.position = 'fixed';
+      refreshContainer.style.bottom = '20px';
+      refreshContainer.style.left = '20px';
+      refreshContainer.style.background = '#1e293b';
+      refreshContainer.style.border = '1px solid rgba(255,255,255,0.15)';
+      refreshContainer.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      refreshContainer.style.zIndex = '9999';
       return;
     }
     
-    // Look for nav--items or top-items containers
-    const navItems = jamfNavTop.querySelector('.nav--items') ||
-                     jamfNavTop.querySelector('[class*="top-items"]') ||
-                     jamfNavTop.querySelector('#desktop-top-nav');
+    // Try to find a list or menu container within the sidebar
+    const sidebarList = sidebarContainer.querySelector('ul') ||
+                       sidebarContainer.querySelector('[role="menu"]') ||
+                       sidebarContainer.querySelector('nav') ||
+                       sidebarContainer.querySelector('.menu') ||
+                       sidebarContainer.querySelector('[class*="list"]');
     
-    console.log('[Jamf Auto-Refresh] navItems:', navItems?.className || navItems?.id || 'NOT FOUND');
-    
-    if (navItems) {
-      const insertBeforeElement = navItems.querySelector('[class*="notification"]') || 
-                                 navItems.querySelector('[class*="bell"]') ||
-                                 navItems.querySelector('[class*="alert"]');
-      
-      console.log('[Jamf Auto-Refresh] insertBeforeElement:', insertBeforeElement?.className || 'NONE');
-      
-      if (insertBeforeElement) {
-        navItems.insertBefore(refreshContainer, insertBeforeElement);
-        console.log('[Jamf Auto-Refresh] Inserted before notification element');
-      } else {
-        navItems.appendChild(refreshContainer);
-        console.log('[Jamf Auto-Refresh] Appended to end of navItems');
-      }
+    if (sidebarList) {
+      console.log('[Jamf Auto-Refresh] Found sidebar list/menu:', sidebarList.className || sidebarList.tagName);
+      // Try to append at the bottom of the sidebar list
+      sidebarList.appendChild(refreshContainer);
+      console.log('[Jamf Auto-Refresh] Appended to sidebar list');
     } else {
-      // No .nav--items found, append directly to jamf-nav-top-container
-      jamfNavTop.appendChild(refreshContainer);
-      console.log('[Jamf Auto-Refresh] Appended directly to jamf-nav-top-container');
+      // Append directly to sidebar container
+      sidebarContainer.appendChild(refreshContainer);
+      console.log('[Jamf Auto-Refresh] Appended directly to sidebar container');
     }
     
-    console.log('[Jamf Auto-Refresh] Final parent:', refreshContainer.parentElement?.className || refreshContainer.parentElement?.id);
-    console.log('[Jamf Auto-Refresh] navTimerBadge display:', navTimerBadge.style.display);
-    console.log('[Jamf Auto-Refresh] navTimerBadge text:', navTimerBadge.textContent);
+    console.log('[Jamf Auto-Refresh] Widget successfully added to sidebar');
   }
 
   function tick() {
