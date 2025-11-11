@@ -227,27 +227,19 @@
   // Prevent duplicate instances more robustly
   const instanceId = 'cc-auto-refresh-nav';
   
-  // ALWAYS check and remove existing widgets first (even if flag not set)
-  const existingWidget = document.getElementById(instanceId);
-  if (existingWidget) {
-    console.log('[Jamf Auto-Refresh] Removing existing widget from DOM');
-    existingWidget.remove();
-  }
-  
-  // Remove any orphaned modals
-  document.querySelectorAll('div[style*="backdrop-filter: blur(4px)"]').forEach(el => {
-    if (el.style.position === 'fixed' && el.style.zIndex === '999999') {
-      el.remove();
-    }
-  });
-  
-  // Check if already loaded AFTER cleanup
-  if (window.__ccAutoRefreshLoaded && !existingWidget) {
-    console.log('[Jamf Auto-Refresh] Already loaded, skipping initialization');
+  // Check if widget already exists in DOM
+  if (document.getElementById(instanceId)) {
+    console.log('[Jamf Auto-Refresh] Widget already exists, skipping initialization');
     return;
   }
   
-  window.__ccAutoRefreshLoaded = true;
+  // Remove any orphaned modals from previous navigation
+  document.querySelectorAll('div[style*="backdrop-filter: blur(4px)"]').forEach(el => {
+    if (el.style.position === 'fixed' && el.style.zIndex === '999999') {
+      console.log('[Jamf Auto-Refresh] Removing orphaned modal');
+      el.remove();
+    }
+  });
 
   const REFRESH_INTERVAL_MS = 1 * 60 * 1000; // default 1 minute
   const DELAY_WHILE_TYPING_MS = 10 * 1000;   // Delay if user is typing when refresh would occur
