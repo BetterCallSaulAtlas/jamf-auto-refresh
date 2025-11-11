@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jamf Auto Refresh (Floating Window)
 // @namespace    Charlie Chimp
-// @version      2.0.0
+// @version      2.1.0
 // @author       BetterCallSaul <sherman@atlassian.com>
 // @description  Automatically refreshes the current page at a user-selectable interval with draggable floating window and countdown timer.
 // @match        *://*/*
@@ -517,9 +517,9 @@
     
     function renderDomainList() {
       domainList.innerHTML = '';
-      const domains = loadEnabledDomains();
+      const configs = loadDomainConfig();
       
-      if (domains.length === 0) {
+      if (configs.length === 0) {
         const emptyMsg = document.createElement('div');
         emptyMsg.textContent = 'No domains configured. Add one below.';
         emptyMsg.style.padding = '12px';
@@ -530,23 +530,65 @@
         return;
       }
       
-      domains.forEach((domain, index) => {
-        const domainItem = document.createElement('div');
-        domainItem.style.display = 'flex';
-        domainItem.style.alignItems = 'center';
-        domainItem.style.justifyContent = 'space-between';
-        domainItem.style.padding = '10px 12px';
-        domainItem.style.background = 'rgba(255,255,255,0.05)';
-        domainItem.style.border = '1px solid rgba(255,255,255,0.1)';
-        domainItem.style.borderRadius = '6px';
-        domainItem.style.marginBottom = '8px';
-        domainItem.style.fontSize = '13px';
+      configs.forEach((config, index) => {
+        const configCard = document.createElement('div');
+        configCard.style.marginBottom = '12px';
+        configCard.style.border = '1px solid rgba(255,255,255,0.1)';
+        configCard.style.borderRadius = '8px';
+        configCard.style.background = 'rgba(255,255,255,0.05)';
+        configCard.style.overflow = 'hidden';
         
-        const domainText = document.createElement('span');
-        domainText.textContent = domain;
+        // Main domain row
+        const domainRow = document.createElement('div');
+        domainRow.style.display = 'flex';
+        domainRow.style.alignItems = 'center';
+        domainRow.style.justifyContent = 'space-between';
+        domainRow.style.padding = '12px';
+        domainRow.style.cursor = 'pointer';
+        domainRow.style.transition = 'background 0.2s ease';
+        
+        domainRow.addEventListener('mouseenter', () => {
+          domainRow.style.background = 'rgba(255,255,255,0.05)';
+        });
+        domainRow.addEventListener('mouseleave', () => {
+          domainRow.style.background = 'transparent';
+        });
+        
+        const domainInfo = document.createElement('div');
+        domainInfo.style.flex = '1';
+        
+        const domainText = document.createElement('div');
+        domainText.textContent = config.domain;
         domainText.style.fontFamily = 'monospace';
-        domainText.style.color = matchesDomainPattern(currentHostname, domain) ? '#22c55e' : '#f8fafc';
-        domainText.style.flex = '1';
+        domainText.style.fontSize = '14px';
+        domainText.style.fontWeight = '600';
+        domainText.style.color = matchesDomainPattern(currentHostname, config.domain) ? '#22c55e' : '#f8fafc';
+        domainText.style.marginBottom = '4px';
+        
+        const domainMeta = document.createElement('div');
+        domainMeta.style.fontSize = '11px';
+        domainMeta.style.color = 'rgba(255,255,255,0.5)';
+        const intervalText = config.interval ? formatDuration(config.interval) : 'Global';
+        const pathText = (config.paths.include.length === 1 && config.paths.include[0] === '*') ? 'All paths' : `${config.paths.include.length} path(s)`;
+        domainMeta.textContent = `⏱️ ${intervalText} • 📍 ${pathText}`;
+        
+        domainInfo.appendChild(domainText);
+        domainInfo.appendChild(domainMeta);
+        
+        const actionButtons = document.createElement('div');
+        actionButtons.style.display = 'flex';
+        actionButtons.style.gap = '4px';
+        
+        const expandBtn = document.createElement('button');
+        expandBtn.textContent = '▼';
+        expandBtn.style.background = 'transparent';
+        expandBtn.style.border = 'none';
+        expandBtn.style.color = 'rgba(255,255,255,0.6)';
+        expandBtn.style.cursor = 'pointer';
+        expandBtn.style.padding = '4px 8px';
+        expandBtn.style.borderRadius = '4px';
+        expandBtn.style.fontSize = '12px';
+        expandBtn.style.transition = 'all 0.2s ease';
         
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '🗑️';
@@ -564,16 +606,47 @@
         deleteBtn.addEventListener('mouseleave', () => {
           deleteBtn.style.background = 'transparent';
         });
-        deleteBtn.addEventListener('click', () => {
-          const updatedDomains = domains.filter((_, i) => i !== index);
-          saveEnabledDomains(updatedDomains);
-          enabledDomains = updatedDomains;
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const updatedConfigs = configs.filter((_, i) => i !== index);
+          saveDomainConfig(updatedConfigs);
+          domainConfigs = updatedConfigs;
+          enabledDomains = updatedConfigs.map(c => c.domain);
           renderDomainList();
         });
         
-        domainItem.appendChild(domainText);
-        domainItem.appendChild(deleteBtn);
-        domainList.appendChild(domainItem);
+        actionButtons.appendChild(expandBtn);
+        actionButtons.appendChild(deleteBtn);
+        
+        domainRow.appendChild(domainInfo);
+        domainRow.appendChild(actionButtons);
+        
+        // Advanced settings panel (initially hidden)
+        const advancedPanel = document.createElement('div');
+        advancedPanel.style.display = 'none';
+        advancedPanel.style.padding = '12px';
+        advancedPanel.style.borderTop = '1px solid rgba(255,255,255,0.1)';
+        advancedPanel.style.background = 'rgba(0,0,0,0.2)';
+        advancedPanel.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.7);">⚡ Advanced settings coming soon in v2.1.0!</div>';
+        
+        // Toggle expand/collapse
+        let isExpanded = false;
+        const toggleExpand = () => {
+          isExpanded = !isExpanded;
+          advancedPanel.style.display = isExpanded ? 'block' : 'none';
+          expandBtn.textContent = isExpanded ? '▲' : '▼';
+          expandBtn.style.background = isExpanded ? 'rgba(255,255,255,0.1)' : 'transparent';
+        };
+        
+        expandBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleExpand();
+        });
+        domainRow.addEventListener('click', toggleExpand);
+        
+        configCard.appendChild(domainRow);
+        configCard.appendChild(advancedPanel);
+        domainList.appendChild(configCard);
       });
     }
     
