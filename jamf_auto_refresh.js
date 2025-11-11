@@ -226,12 +226,27 @@
 
   // Prevent duplicate instances more robustly
   const instanceId = 'cc-auto-refresh-nav';
+  const initTimestampKey = 'cc_auto_refresh_init_timestamp';
   
-  // Check if widget already exists in DOM
-  if (document.getElementById(instanceId)) {
-    console.log('[Jamf Auto-Refresh] Widget already exists, skipping initialization');
+  // Check if we recently initialized (within last 2 seconds)
+  const lastInit = parseInt(localStorage.getItem(initTimestampKey) || '0', 10);
+  const now = Date.now();
+  if (now - lastInit < 2000) {
+    console.log('[Jamf Auto-Refresh] Recently initialized, skipping');
     return;
   }
+  
+  // Check if widget already exists in DOM
+  const existingWidget = document.getElementById(instanceId);
+  if (existingWidget) {
+    console.log('[Jamf Auto-Refresh] Widget already exists, skipping initialization');
+    // Update timestamp to prevent re-init
+    localStorage.setItem(initTimestampKey, String(now));
+    return;
+  }
+  
+  // Set init timestamp
+  localStorage.setItem(initTimestampKey, String(now));
   
   // Remove any orphaned modals from previous navigation
   document.querySelectorAll('div[style*="backdrop-filter: blur(4px)"]').forEach(el => {
