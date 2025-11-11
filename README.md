@@ -29,7 +29,7 @@ A userscript that adds a draggable floating auto-refresh widget to Jamf Pro, wit
    - Or [download from GitHub Releases](https://github.com/BetterCallSaulAtlas/jamf-auto-refresh/releases/latest)
    - Or copy the contents of `jamf_auto_refresh.js` and create a new script in your userscript manager
 
-3. Navigate to your Jamf Pro instance (e.g., `https://pke.atlassian.com/*` or `https://atlassian.jamfcloud.com/*`)
+3. Navigate to your Jamf Pro instance (e.g., `https://yourcompany.jamfcloud.com/*`)
 
 4. The floating widget will appear in the bottom-left corner (you can drag it anywhere)
 
