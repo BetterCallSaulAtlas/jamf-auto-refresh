@@ -29,9 +29,22 @@ A userscript that adds a draggable floating auto-refresh widget to Jamf Pro, wit
    - Or [download from GitHub Releases](https://github.com/BetterCallSaulAtlas/jamf-auto-refresh/releases/latest)
    - Or copy the contents of `jamf_auto_refresh.js` and create a new script in your userscript manager
 
-3. Navigate to your Jamf Pro instance (e.g., `https://yourcompany.jamfcloud.com/*`)
+3. **Configure your Jamf Pro domains**:
+   - Open the script in your userscript manager's editor
+   - Find the `USER CONFIGURATION` section at the top of the script
+   - Edit the `ENABLED_DOMAINS` array to include your Jamf Pro instance URLs
+   - Example:
+     ```javascript
+     const ENABLED_DOMAINS = [
+       'yourcompany.jamfcloud.com',
+       'jamf.yourcompany.com'
+     ];
+     ```
+   - Save the script
 
-4. The floating widget will appear in the bottom-left corner (you can drag it anywhere)
+4. Navigate to your Jamf Pro instance
+
+5. The floating widget will appear in the bottom-left corner (you can drag it anywhere)
 
 ### Automatic Updates
 The script automatically checks for updates daily. Your userscript manager will notify you when a new version is available.
@@ -39,6 +52,41 @@ The script automatically checks for updates daily. Your userscript manager will 
 To manually check for updates:
 - **Tampermonkey**: Click the extension icon → Dashboard → Click the script name → Check for updates
 - **Greasemonkey**: Click the extension icon → User Scripts → Click the script → Check for updates
+
+## Configuration
+
+### Enabling the Script for Your Domains
+
+The script includes a configurable domain whitelist at the top of the file. By default, it won't run on any sites until you configure your Jamf Pro URLs.
+
+**To configure:**
+1. Open your userscript manager (e.g., Tampermonkey)
+2. Click on the script to edit it
+3. Find the `USER CONFIGURATION` section (near the top)
+4. Edit the `ENABLED_DOMAINS` array
+
+**Examples:**
+
+```javascript
+// Single domain
+const ENABLED_DOMAINS = [
+  'yourcompany.jamfcloud.com'
+];
+
+// Multiple domains
+const ENABLED_DOMAINS = [
+  'yourcompany.jamfcloud.com',
+  'jamf.yourcompany.com',
+  'jamf-prod.internal.company.com'
+];
+
+// Using wildcards (matches any subdomain)
+const ENABLED_DOMAINS = [
+  '*jamfcloud.com'  // Matches any *.jamfcloud.com domain
+];
+```
+
+**Note:** The script uses `@match *://*/*` to load on all pages, but the domain check happens at runtime. This means it won't interfere with other websites—it simply exits early if the domain doesn't match.
 
 ## Usage
 
@@ -60,7 +108,15 @@ The script automatically delays refresh when you're typing in forms to prevent d
 
 ## Version History
 
-### v1.8.0 (Latest)
+### v1.9.0 (Latest)
+- ✨ **User-Configurable Domains** - Easy-to-edit configuration section at top of script
+- 🌐 **Universal @match** - Script uses `@match *://*/*` with runtime domain checking
+- 🔧 **Domain Whitelist** - Script only runs on domains you specify in ENABLED_DOMAINS array
+- 📝 **Wildcard Support** - Use `*jamfcloud.com` to match any subdomain
+- 🔒 **Safe by Default** - Won't interfere with other websites outside your whitelist
+- 📚 **Better Documentation** - Comprehensive configuration examples in README
+
+### v1.8.0
 - 🎨 **Reverted to Floating Window Design** - Draggable floating window instead of sidebar integration
 - ✨ **Session Duration Tracking** - Shows total uptime since first page load
 - 💾 **Persistent Statistics** - Refresh counter, timestamp, and session duration survive page reloads

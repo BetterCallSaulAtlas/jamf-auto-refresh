@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         Jamf Auto Refresh (Floating Window)
 // @namespace    Charlie Chimp
-// @version      1.8.0
+// @version      1.9.0
 // @author       BetterCallSaul <sherman@atlassian.com>
 // @description  Automatically refreshes the current page at a user-selectable interval with draggable floating window and countdown timer.
-// @match        https://pke.atlassian.com/*
-// @match        https://atlassian.jamfcloud.com/*
+// @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/BetterCallSaulAtlas/jamf-auto-refresh/main/jamf_auto_refresh.js
 // @downloadURL  https://raw.githubusercontent.com/BetterCallSaulAtlas/jamf-auto-refresh/main/jamf_auto_refresh.js
 // @supportURL   https://github.com/BetterCallSaulAtlas/jamf-auto-refresh/issues
@@ -16,6 +15,50 @@
 
 (function () {
   'use strict';
+
+  // ============================================================================
+  // USER CONFIGURATION
+  // ============================================================================
+  // Edit the URLs below to match your Jamf Pro instance(s).
+  // The script will only run on URLs that match these patterns.
+  // You can use wildcards (*) to match multiple URLs.
+  //
+  // Examples:
+  //   - 'yourcompany.jamfcloud.com'           (matches only this domain)
+  //   - 'jamf.yourcompany.com'                (matches subdomain)
+  //   - '*jamfcloud.com'                      (matches any jamfcloud.com domain)
+  //   - '*'                                   (matches ALL websites - not recommended)
+  //
+  // To add multiple domains, add more strings to the array:
+  //   const ENABLED_DOMAINS = ['domain1.com', 'domain2.com', 'subdomain.example.com'];
+
+  const ENABLED_DOMAINS = [
+    'pke.atlassian.com',
+    'atlassian.jamfcloud.com'
+  ];
+
+  // ============================================================================
+  // END USER CONFIGURATION
+  // ============================================================================
+
+  // Check if current domain matches any enabled domain
+  const currentHostname = window.location.hostname;
+  const isEnabled = ENABLED_DOMAINS.some(domain => {
+    // Remove wildcards and check if current hostname contains or matches the domain
+    const cleanDomain = domain.replace(/\*/g, '');
+    if (domain.startsWith('*')) {
+      return currentHostname.includes(cleanDomain) || currentHostname.endsWith(cleanDomain);
+    }
+    return currentHostname === cleanDomain || currentHostname.endsWith('.' + cleanDomain);
+  });
+
+  // Exit early if not on an enabled domain
+  if (!isEnabled) {
+    console.log('[Jamf Auto-Refresh] Script disabled for this domain:', currentHostname);
+    return;
+  }
+
+  console.log('[Jamf Auto-Refresh] Script enabled for domain:', currentHostname);
 
   // Prevent duplicate instances more robustly
   const instanceId = 'cc-auto-refresh-nav';
