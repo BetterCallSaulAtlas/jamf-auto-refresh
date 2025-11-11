@@ -16,13 +16,12 @@
 (function () {
   'use strict';
 
-  // Prevent multiple executions - use a unique property on window
-  const UNIQUE_ID = 'cc_auto_refresh_v2_1_0_loaded';
-  if (window[UNIQUE_ID]) {
-    console.log('[Jamf Auto-Refresh] Script already executed, aborting');
+  // Check if widget already exists FIRST (most reliable check)
+  const WIDGET_ID = 'cc-auto-refresh-nav';
+  if (document.getElementById(WIDGET_ID)) {
+    console.log('[Jamf Auto-Refresh] Widget already exists in DOM, aborting script execution');
     return;
   }
-  window[UNIQUE_ID] = true;
 
   // ============================================================================
   // USER CONFIGURATION
@@ -232,29 +231,8 @@
     paths: matchedConfig.paths
   });
 
-  // Prevent duplicate instances more robustly
+  // Widget ID (already checked at top of script)
   const instanceId = 'cc-auto-refresh-nav';
-  const initTimestampKey = 'cc_auto_refresh_init_timestamp';
-  
-  // Check if we recently initialized (within last 2 seconds)
-  const lastInit = parseInt(localStorage.getItem(initTimestampKey) || '0', 10);
-  const now = Date.now();
-  if (now - lastInit < 2000) {
-    console.log('[Jamf Auto-Refresh] Recently initialized, skipping');
-    return;
-  }
-  
-  // Check if widget already exists in DOM
-  const existingWidget = document.getElementById(instanceId);
-  if (existingWidget) {
-    console.log('[Jamf Auto-Refresh] Widget already exists, skipping initialization');
-    // Update timestamp to prevent re-init
-    localStorage.setItem(initTimestampKey, String(now));
-    return;
-  }
-  
-  // Set init timestamp
-  localStorage.setItem(initTimestampKey, String(now));
   
   // Remove any orphaned modals from previous navigation
   document.querySelectorAll('div[style*="backdrop-filter: blur(4px)"]').forEach(el => {
