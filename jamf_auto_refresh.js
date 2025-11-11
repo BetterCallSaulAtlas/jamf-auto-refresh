@@ -1,11 +1,10 @@
 // ==UserScript==
 // @name         Jamf Auto Refresh (Floating Window)
 // @namespace    Charlie Chimp
-// @version      1.8.0
+// @version      2.0.0
 // @author       BetterCallSaul <sherman@atlassian.com>
 // @description  Automatically refreshes the current page at a user-selectable interval with draggable floating window and countdown timer.
-// @match        https://pke.atlassian.com/*
-// @match        https://atlassian.jamfcloud.com/*
+// @match        *://*/*
 // @updateURL    https://raw.githubusercontent.com/BetterCallSaulAtlas/jamf-auto-refresh/main/jamf_auto_refresh.js
 // @downloadURL  https://raw.githubusercontent.com/BetterCallSaulAtlas/jamf-auto-refresh/main/jamf_auto_refresh.js
 // @supportURL   https://github.com/BetterCallSaulAtlas/jamf-auto-refresh/issues
@@ -16,6 +15,71 @@
 
 (function () {
   'use strict';
+
+  // ============================================================================
+  // USER CONFIGURATION
+  // ============================================================================
+  // Default domains if no configuration exists in localStorage.
+  // You can still edit this array, or use the visual Settings UI.
+  //
+  // Examples:
+  //   - 'yourcompany.jamfcloud.com'           (matches only this domain)
+  //   - 'jamf.yourcompany.com'                (matches subdomain)
+  //   - '*jamfcloud.com'                      (matches any jamfcloud.com domain)
+
+  const DEFAULT_ENABLED_DOMAINS = [
+    '*.jamfcloud.com'
+  ];
+
+  // ============================================================================
+  // END USER CONFIGURATION
+  // ============================================================================
+
+  // Storage keys
+  const STORAGE_KEY_DOMAINS = 'cc_auto_refresh_domains:' + location.host;
+
+  // Load domains from localStorage or use defaults
+  function loadEnabledDomains() {
+    const stored = localStorage.getItem(STORAGE_KEY_DOMAINS);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ENABLED_DOMAINS;
+      } catch (e) {
+        console.warn('[Jamf Auto-Refresh] Failed to parse stored domains, using defaults');
+        return DEFAULT_ENABLED_DOMAINS;
+      }
+    }
+    return DEFAULT_ENABLED_DOMAINS;
+  }
+
+  // Save domains to localStorage
+  function saveEnabledDomains(domains) {
+    localStorage.setItem(STORAGE_KEY_DOMAINS, JSON.stringify(domains));
+  }
+
+  // Check if a hostname matches a domain pattern
+  function matchesDomainPattern(hostname, pattern) {
+    const cleanPattern = pattern.replace(/\*/g, '');
+    if (pattern.startsWith('*')) {
+      return hostname.includes(cleanPattern) || hostname.endsWith(cleanPattern);
+    }
+    return hostname === cleanPattern || hostname.endsWith('.' + cleanPattern);
+  }
+
+  // Check if current domain matches any enabled domain
+  const currentHostname = window.location.hostname;
+  let enabledDomains = loadEnabledDomains();
+  const isEnabled = enabledDomains.some(domain => matchesDomainPattern(currentHostname, domain));
+
+  // Exit early if not on an enabled domain
+  if (!isEnabled) {
+    console.log('[Jamf Auto-Refresh] Script disabled for this domain:', currentHostname);
+    console.log('[Jamf Auto-Refresh] Enabled domains:', enabledDomains);
+    return;
+  }
+
+  console.log('[Jamf Auto-Refresh] Script enabled for domain:', currentHostname);
 
   // Prevent duplicate instances more robustly
   const instanceId = 'cc-auto-refresh-nav';
@@ -219,6 +283,338 @@
     
     refreshContainer.style.bottom = `${Math.max(0, bottom)}px`;
     refreshContainer.style.left = `${Math.max(0, Math.min(window.innerWidth - refreshContainer.offsetWidth, left))}px`;
+  function openDomainManager() {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100%';
+    overlay.style.height = '100%';
+    overlay.style.background = 'rgba(0,0,0,0.7)';
+    overlay.style.zIndex = '999999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.backdropFilter = 'blur(4px)';
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.style.background = 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)';
+    modal.style.border = '1px solid rgba(255,255,255,0.2)';
+    modal.style.borderRadius = '16px';
+    modal.style.boxShadow = '0 20px 60px rgba(0,0,0,0.5)';
+    modal.style.padding = '24px';
+    modal.style.width = '90%';
+    modal.style.maxWidth = '500px';
+    modal.style.maxHeight = '80vh';
+    modal.style.overflow = 'auto';
+    modal.style.fontFamily = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+    modal.style.color = '#f8fafc';
+    
+    // Modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.style.display = 'flex';
+    modalHeader.style.justifyContent = 'space-between';
+    modalHeader.style.alignItems = 'center';
+    modalHeader.style.marginBottom = '20px';
+    modalHeader.style.paddingBottom = '16px';
+    modalHeader.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+    
+    const modalTitle = document.createElement('h2');
+    modalTitle.textContent = '⚙️ Domain Settings';
+    modalTitle.style.margin = '0';
+    modalTitle.style.fontSize = '20px';
+    modalTitle.style.fontWeight = '600';
+    modalTitle.style.color = '#22c55e';
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = 'rgba(255,255,255,0.6)';
+    closeBtn.style.fontSize = '24px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.style.padding = '0';
+    closeBtn.style.width = '32px';
+    closeBtn.style.height = '32px';
+    closeBtn.style.borderRadius = '6px';
+    closeBtn.style.transition = 'all 0.2s ease';
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = 'rgba(255,255,255,0.1)';
+      closeBtn.style.color = '#fff';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = 'transparent';
+      closeBtn.style.color = 'rgba(255,255,255,0.6)';
+    });
+    closeBtn.addEventListener('click', () => document.body.removeChild(overlay));
+    
+    modalHeader.appendChild(modalTitle);
+    modalHeader.appendChild(closeBtn);
+    
+    // Current domain indicator
+    const currentDomainInfo = document.createElement('div');
+    currentDomainInfo.style.padding = '12px';
+    currentDomainInfo.style.background = 'rgba(34,197,94,0.1)';
+    currentDomainInfo.style.border = '1px solid rgba(34,197,94,0.3)';
+    currentDomainInfo.style.borderRadius = '8px';
+    currentDomainInfo.style.marginBottom = '20px';
+    currentDomainInfo.style.fontSize = '13px';
+    currentDomainInfo.innerHTML = `<strong>Current domain:</strong> ${currentHostname}`;
+    
+    // Domain list label
+    const listLabel = document.createElement('div');
+    listLabel.textContent = 'Enabled Domains:';
+    listLabel.style.fontSize = '14px';
+    listLabel.style.fontWeight = '600';
+    listLabel.style.marginBottom = '12px';
+    listLabel.style.color = '#cbd5e1';
+    
+    // Domain list container
+    const domainList = document.createElement('div');
+    domainList.style.marginBottom = '16px';
+    
+    function renderDomainList() {
+      domainList.innerHTML = '';
+      const domains = loadEnabledDomains();
+      
+      if (domains.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.textContent = 'No domains configured. Add one below.';
+        emptyMsg.style.padding = '12px';
+        emptyMsg.style.color = 'rgba(255,255,255,0.5)';
+        emptyMsg.style.fontStyle = 'italic';
+        emptyMsg.style.fontSize = '13px';
+        domainList.appendChild(emptyMsg);
+        return;
+      }
+      
+      domains.forEach((domain, index) => {
+        const domainItem = document.createElement('div');
+        domainItem.style.display = 'flex';
+        domainItem.style.alignItems = 'center';
+        domainItem.style.justifyContent = 'space-between';
+        domainItem.style.padding = '10px 12px';
+        domainItem.style.background = 'rgba(255,255,255,0.05)';
+        domainItem.style.border = '1px solid rgba(255,255,255,0.1)';
+        domainItem.style.borderRadius = '6px';
+        domainItem.style.marginBottom = '8px';
+        domainItem.style.fontSize = '13px';
+        
+        const domainText = document.createElement('span');
+        domainText.textContent = domain;
+        domainText.style.fontFamily = 'monospace';
+        domainText.style.color = matchesDomainPattern(currentHostname, domain) ? '#22c55e' : '#f8fafc';
+        domainText.style.flex = '1';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.style.background = 'transparent';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.color = '#ef4444';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.padding = '4px 8px';
+        deleteBtn.style.borderRadius = '4px';
+        deleteBtn.style.fontSize = '16px';
+        deleteBtn.style.transition = 'all 0.2s ease';
+        deleteBtn.addEventListener('mouseenter', () => {
+          deleteBtn.style.background = 'rgba(239,68,68,0.2)';
+        });
+        deleteBtn.addEventListener('mouseleave', () => {
+          deleteBtn.style.background = 'transparent';
+        });
+        deleteBtn.addEventListener('click', () => {
+          const updatedDomains = domains.filter((_, i) => i !== index);
+          saveEnabledDomains(updatedDomains);
+          enabledDomains = updatedDomains;
+          renderDomainList();
+        });
+        
+        domainItem.appendChild(domainText);
+        domainItem.appendChild(deleteBtn);
+        domainList.appendChild(domainItem);
+      });
+    }
+    
+    renderDomainList();
+    
+    // Add domain section
+    const addSection = document.createElement('div');
+    addSection.style.marginTop = '20px';
+    addSection.style.padding = '16px';
+    addSection.style.background = 'rgba(0,0,0,0.2)';
+    addSection.style.borderRadius = '8px';
+    addSection.style.border = '1px solid rgba(255,255,255,0.1)';
+    
+    const addLabel = document.createElement('div');
+    addLabel.textContent = 'Add Domain:';
+    addLabel.style.fontSize = '14px';
+    addLabel.style.fontWeight = '600';
+    addLabel.style.marginBottom = '8px';
+    addLabel.style.color = '#cbd5e1';
+    
+    const addInput = document.createElement('input');
+    addInput.type = 'text';
+    addInput.placeholder = 'e.g., *.jamfcloud.com or yourcompany.com';
+    addInput.style.width = '100%';
+    addInput.style.padding = '10px';
+    addInput.style.border = '1px solid rgba(255,255,255,0.2)';
+    addInput.style.borderRadius = '6px';
+    addInput.style.background = '#334155';
+    addInput.style.color = '#f8fafc';
+    addInput.style.fontSize = '13px';
+    addInput.style.fontFamily = 'monospace';
+    addInput.style.marginBottom = '8px';
+    addInput.style.boxSizing = 'border-box';
+    
+    const addHint = document.createElement('div');
+    addHint.style.fontSize = '11px';
+    addHint.style.color = 'rgba(255,255,255,0.5)';
+    addHint.style.marginBottom = '12px';
+    addHint.innerHTML = 'Use <code>*</code> for wildcards. Examples: <code>*.jamfcloud.com</code>, <code>jamf.company.com</code>';
+    
+    const addBtnRow = document.createElement('div');
+    addBtnRow.style.display = 'flex';
+    addBtnRow.style.gap = '8px';
+    
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '✚ Add Domain';
+    addBtn.style.flex = '1';
+    addBtn.style.padding = '10px';
+    addBtn.style.border = 'none';
+    addBtn.style.borderRadius = '6px';
+    addBtn.style.background = '#22c55e';
+    addBtn.style.color = 'white';
+    addBtn.style.cursor = 'pointer';
+    addBtn.style.fontWeight = '600';
+    addBtn.style.fontSize = '13px';
+    addBtn.style.transition = 'all 0.2s ease';
+    addBtn.addEventListener('mouseenter', () => {
+      addBtn.style.background = '#16a34a';
+    });
+    addBtn.addEventListener('mouseleave', () => {
+      addBtn.style.background = '#22c55e';
+    });
+    
+    const testBtn = document.createElement('button');
+    testBtn.textContent = '🧪 Test';
+    testBtn.style.padding = '10px 16px';
+    testBtn.style.border = 'none';
+    testBtn.style.borderRadius = '6px';
+    testBtn.style.background = '#3b82f6';
+    testBtn.style.color = 'white';
+    testBtn.style.cursor = 'pointer';
+    testBtn.style.fontWeight = '600';
+    testBtn.style.fontSize = '13px';
+    testBtn.style.transition = 'all 0.2s ease';
+    testBtn.addEventListener('mouseenter', () => {
+      testBtn.style.background = '#2563eb';
+    });
+    testBtn.addEventListener('mouseleave', () => {
+      testBtn.style.background = '#3b82f6';
+    });
+    
+    const feedbackMsg = document.createElement('div');
+    feedbackMsg.style.marginTop = '8px';
+    feedbackMsg.style.fontSize = '12px';
+    feedbackMsg.style.padding = '8px';
+    feedbackMsg.style.borderRadius = '6px';
+    feedbackMsg.style.display = 'none';
+    
+    addBtn.addEventListener('click', () => {
+      const domain = addInput.value.trim();
+      if (!domain) {
+        feedbackMsg.textContent = '⚠️ Please enter a domain pattern';
+        feedbackMsg.style.background = 'rgba(239,68,68,0.2)';
+        feedbackMsg.style.color = '#fca5a5';
+        feedbackMsg.style.display = 'block';
+        return;
+      }
+      
+      const domains = loadEnabledDomains();
+      if (domains.includes(domain)) {
+        feedbackMsg.textContent = '⚠️ This domain is already in the list';
+        feedbackMsg.style.background = 'rgba(251,146,60,0.2)';
+        feedbackMsg.style.color = '#fdba74';
+        feedbackMsg.style.display = 'block';
+        return;
+      }
+      
+      domains.push(domain);
+      saveEnabledDomains(domains);
+      enabledDomains = domains;
+      addInput.value = '';
+      feedbackMsg.textContent = '✅ Domain added successfully!';
+      feedbackMsg.style.background = 'rgba(34,197,94,0.2)';
+      feedbackMsg.style.color = '#86efac';
+      feedbackMsg.style.display = 'block';
+      renderDomainList();
+      
+      setTimeout(() => {
+        feedbackMsg.style.display = 'none';
+      }, 3000);
+    });
+    
+    testBtn.addEventListener('click', () => {
+      const domain = addInput.value.trim();
+      if (!domain) {
+        feedbackMsg.textContent = '⚠️ Please enter a domain pattern to test';
+        feedbackMsg.style.background = 'rgba(239,68,68,0.2)';
+        feedbackMsg.style.color = '#fca5a5';
+        feedbackMsg.style.display = 'block';
+        return;
+      }
+      
+      const matches = matchesDomainPattern(currentHostname, domain);
+      if (matches) {
+        feedbackMsg.textContent = `✅ Pattern "${domain}" matches current domain "${currentHostname}"`;
+        feedbackMsg.style.background = 'rgba(34,197,94,0.2)';
+        feedbackMsg.style.color = '#86efac';
+      } else {
+        feedbackMsg.textContent = `❌ Pattern "${domain}" does NOT match current domain "${currentHostname}"`;
+        feedbackMsg.style.background = 'rgba(239,68,68,0.2)';
+        feedbackMsg.style.color = '#fca5a5';
+      }
+      feedbackMsg.style.display = 'block';
+    });
+    
+    // Allow Enter key to add domain
+    addInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addBtn.click();
+      }
+    });
+    
+    addBtnRow.appendChild(addBtn);
+    addBtnRow.appendChild(testBtn);
+    
+    addSection.appendChild(addLabel);
+    addSection.appendChild(addInput);
+    addSection.appendChild(addHint);
+    addSection.appendChild(addBtnRow);
+    addSection.appendChild(feedbackMsg);
+    
+    // Assemble modal
+    modal.appendChild(modalHeader);
+    modal.appendChild(currentDomainInfo);
+    modal.appendChild(listLabel);
+    modal.appendChild(domainList);
+    modal.appendChild(addSection);
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        document.body.removeChild(overlay);
+      }
+    });
+    
+    // Focus input
+    setTimeout(() => addInput.focus(), 100);
+  }
   }
 
   function createUI() {
@@ -432,12 +828,40 @@
     intervalRow.appendChild(intervalLabel);
     intervalRow.appendChild(intervalSelect);
     
+    // Settings button
+    const settingsBtn = document.createElement('button');
+    settingsBtn.textContent = '⚙️ Domain Settings';
+    settingsBtn.style.width = '100%';
+    settingsBtn.style.padding = '10px';
+    settingsBtn.style.marginTop = '8px';
+    settingsBtn.style.border = 'none';
+    settingsBtn.style.borderRadius = '8px';
+    settingsBtn.style.background = '#64748b';
+    settingsBtn.style.color = 'white';
+    settingsBtn.style.cursor = 'pointer';
+    settingsBtn.style.fontWeight = '600';
+    settingsBtn.style.fontSize = '14px';
+    settingsBtn.style.transition = 'all 0.2s ease';
+    settingsBtn.addEventListener('mouseenter', () => {
+      settingsBtn.style.background = '#475569';
+      settingsBtn.style.transform = 'translateY(-1px)';
+    });
+    settingsBtn.addEventListener('mouseleave', () => {
+      settingsBtn.style.background = '#64748b';
+      settingsBtn.style.transform = 'translateY(0)';
+    });
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openDomainManager();
+    });
+    
     // Assemble the UI
     refreshContainer.appendChild(header);
     refreshContainer.appendChild(statusRow);
     refreshContainer.appendChild(refreshNowBtn);
     refreshContainer.appendChild(toggleBtn);
     refreshContainer.appendChild(intervalRow);
+    refreshContainer.appendChild(settingsBtn);
     
     // Store references for updates
     window.__ccRefreshSessionCounter = sessionCounterEl;

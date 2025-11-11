@@ -29,9 +29,22 @@ A userscript that adds a draggable floating auto-refresh widget to Jamf Pro, wit
    - Or [download from GitHub Releases](https://github.com/BetterCallSaulAtlas/jamf-auto-refresh/releases/latest)
    - Or copy the contents of `jamf_auto_refresh.js` and create a new script in your userscript manager
 
-3. Navigate to your Jamf Pro instance (e.g., `https://yourcompany.jamfcloud.com/*`)
+3. **Configure your Jamf Pro domains**:
+   - Open the script in your userscript manager's editor
+   - Find the `USER CONFIGURATION` section at the top of the script
+   - Edit the `ENABLED_DOMAINS` array to include your Jamf Pro instance URLs
+   - Example:
+     ```javascript
+     const ENABLED_DOMAINS = [
+       'yourcompany.jamfcloud.com',
+       'jamf.yourcompany.com'
+     ];
+     ```
+   - Save the script
 
-4. The floating widget will appear in the bottom-left corner (you can drag it anywhere)
+4. Navigate to your Jamf Pro instance
+
+5. The floating widget will appear in the bottom-left corner (you can drag it anywhere)
 
 ### Automatic Updates
 The script automatically checks for updates daily. Your userscript manager will notify you when a new version is available.
@@ -39,6 +52,64 @@ The script automatically checks for updates daily. Your userscript manager will 
 To manually check for updates:
 - **Tampermonkey**: Click the extension icon → Dashboard → Click the script name → Check for updates
 - **Greasemonkey**: Click the extension icon → User Scripts → Click the script → Check for updates
+
+## Configuration
+
+### Visual Domain Manager (Recommended)
+
+The easiest way to configure domains is through the built-in visual interface:
+
+1. **Open the floating widget** on any page
+2. **Click "⚙️ Domain Settings"** button
+3. **Use the visual interface** to:
+   - View all configured domains
+   - Add new domain patterns
+   - Test patterns before adding
+   - Remove unwanted domains
+   - See which patterns match the current page
+
+**Screenshot:** *(Visual domain manager modal showing domain list, add/remove functionality, and test feature)*
+
+### Features:
+- ✅ **Current Domain Indicator** - Shows your current hostname
+- ✅ **Domain List** - All configured domains with delete buttons
+- ✅ **Color Coding** - Domains matching current page shown in green
+- ✅ **Test Button** - Validate patterns before adding
+- ✅ **Real-time Feedback** - Success/error messages
+- ✅ **Auto-save** - Changes persist immediately
+
+### Manual Configuration (Advanced)
+
+You can also edit the configuration directly in the code:
+
+**To configure:**
+1. Open your userscript manager (e.g., Tampermonkey)
+2. Click on the script to edit it
+3. Find the `USER CONFIGURATION` section (near the top)
+4. Edit the `DEFAULT_ENABLED_DOMAINS` array
+
+**Examples:**
+
+```javascript
+// Single domain
+const DEFAULT_ENABLED_DOMAINS = [
+  'yourcompany.jamfcloud.com'
+];
+
+// Multiple domains
+const DEFAULT_ENABLED_DOMAINS = [
+  'yourcompany.jamfcloud.com',
+  'jamf.yourcompany.com',
+  'jamf-prod.internal.company.com'
+];
+
+// Using wildcards (matches any subdomain)
+const DEFAULT_ENABLED_DOMAINS = [
+  '*jamfcloud.com'  // Matches any *.jamfcloud.com domain
+];
+```
+
+**Note:** The visual domain manager stores settings in localStorage. If you edit the code directly, those changes will be used as defaults for new configurations.
 
 ## Usage
 
@@ -60,7 +131,25 @@ The script automatically delays refresh when you're typing in forms to prevent d
 
 ## Version History
 
-### v1.8.0 (Latest)
+### v2.0.0 (Latest)
+- 🎨 **Visual Domain Manager UI** - Manage domains through intuitive modal interface
+- ✨ **No Code Editing Required** - Add/remove domains with buttons and inputs
+- 🧪 **Pattern Testing** - Test domain patterns before adding them
+- 🎯 **Real-time Feedback** - Success/error messages for all operations
+- 🔍 **Domain Highlighting** - Current domain shown in green if it matches a pattern
+- ⌨️ **Keyboard Support** - Press Enter to add domains quickly
+- 💾 **Auto-save** - Changes persist immediately to localStorage
+- 🔙 **Backward Compatible** - Still supports DEFAULT_ENABLED_DOMAINS for manual editing
+
+### v1.9.0
+- ✨ **User-Configurable Domains** - Easy-to-edit configuration section at top of script
+- 🌐 **Universal @match** - Script uses `@match *://*/*` with runtime domain checking
+- 🔧 **Domain Whitelist** - Script only runs on domains you specify in ENABLED_DOMAINS array
+- 📝 **Wildcard Support** - Use `*jamfcloud.com` to match any subdomain
+- 🔒 **Safe by Default** - Won't interfere with other websites outside your whitelist
+- 📚 **Better Documentation** - Comprehensive configuration examples in README
+
+### v1.8.0
 - 🎨 **Reverted to Floating Window Design** - Draggable floating window instead of sidebar integration
 - ✨ **Session Duration Tracking** - Shows total uptime since first page load
 - 💾 **Persistent Statistics** - Refresh counter, timestamp, and session duration survive page reloads
