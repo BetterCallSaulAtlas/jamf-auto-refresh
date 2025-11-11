@@ -44,7 +44,8 @@
   //   - 'regex:^/computers/.*\\.html$'         Regex pattern
 
   const DEFAULT_DOMAIN_CONFIG = [
-    '*.jamfcloud.com'
+    '*.jamfcloud.com',
+    'pke.atlassian.com'
   ];
 
   // ============================================================================
@@ -80,13 +81,17 @@
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        // Only use stored config if it's a non-empty array
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(normalizeConfigEntry);
         }
+        // Empty array in storage - fall through to defaults
       } catch (e) {
         console.warn('[Jamf Auto-Refresh] Failed to parse stored domains, using defaults');
       }
     }
+    // No valid stored config - use defaults
+    console.log('[Jamf Auto-Refresh] Using DEFAULT_DOMAIN_CONFIG:', DEFAULT_DOMAIN_CONFIG);
     return DEFAULT_DOMAIN_CONFIG.map(normalizeConfigEntry);
   }
 
