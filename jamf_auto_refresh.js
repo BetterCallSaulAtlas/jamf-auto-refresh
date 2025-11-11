@@ -1144,7 +1144,6 @@
     // Focus input
     setTimeout(() => addInput.focus(), 100);
   }
-  }
 
   function createUI() {
     const position = loadPosition();
