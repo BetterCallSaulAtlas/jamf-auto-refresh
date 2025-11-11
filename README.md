@@ -68,7 +68,11 @@ The easiest way to configure domains is through the built-in visual interface:
    - Remove unwanted domains
    - See which patterns match the current page
 
-**Screenshot:** *(Visual domain manager modal showing domain list, add/remove functionality, and test feature)*
+#### Floating Widget
+![Floating Widget](screenshots/floating-widget.png)
+
+#### Domain Settings Modal
+![Domain Settings Modal](screenshots/domain-settings-modal.png)
 
 ### Features:
 - ✅ **Current Domain Indicator** - Shows your current hostname
