@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Jamf Auto Refresh (Floating Window)
 // @namespace    Charlie Chimp
-// @version      2.1.0
+// @version      2.1.1
 // @author       BetterCallSaul <sherman@atlassian.com>
 // @description  Automatically refreshes the current page at a user-selectable interval with draggable floating window and countdown timer.
 // @match        *://*/*
@@ -16,12 +16,24 @@
 (function () {
   'use strict';
 
-  // Check if widget already exists FIRST (most reliable check)
+  // Generate unique script ID for this session
+  const SCRIPT_SESSION_KEY = '__jamfAutoRefreshLoaded__';
   const WIDGET_ID = 'cc-auto-refresh-nav';
-  if (document.getElementById(WIDGET_ID)) {
-    console.log('[Jamf Auto-Refresh] Widget already exists in DOM, aborting script execution');
+  
+  // Check if script already loaded in this session (survives SPA navigation)
+  if (window[SCRIPT_SESSION_KEY]) {
+    console.log('[Jamf Auto-Refresh] Already loaded in this window session, aborting');
     return;
   }
+  
+  // Check if widget already exists in DOM
+  if (document.getElementById(WIDGET_ID)) {
+    console.log('[Jamf Auto-Refresh] Widget already exists in DOM, aborting');
+    return;
+  }
+  
+  // Mark as loaded immediately to prevent race conditions
+  window[SCRIPT_SESSION_KEY] = true;
 
   // ============================================================================
   // USER CONFIGURATION
@@ -1409,8 +1421,13 @@
     
     // Add drag functionality
     header.addEventListener('mousedown', startDragging);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', stopDragging);
+    
+    // Store drag functions on window to prevent duplicates
+    if (!window.__jamfAutoRefreshDragListeners) {
+      window.__jamfAutoRefreshDragListeners = true;
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', stopDragging);
+    }
     
     // Prevent text selection while dragging
     refreshContainer.addEventListener('dragstart', (e) => e.preventDefault());
@@ -1486,24 +1503,33 @@
     tickTimer = setInterval(tick, 1000);
 
     // Handle AngularJS navigation and SPA changes
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
     function handleUrlChange() {
       // Reset the timer on SPA navigation for clarity
       if (enabled) scheduleNext();
       updateUI();
     }
-    history.pushState = function () {
-      const ret = originalPushState.apply(this, arguments);
-      handleUrlChange();
-      return ret;
-    };
-    history.replaceState = function () {
-      const ret = originalReplaceState.apply(this, arguments);
-      handleUrlChange();
-      return ret;
-    };
-    window.addEventListener('popstate', handleUrlChange);
+    
+    // Only override history methods if not already done
+    if (!window.__jamfAutoRefreshHistoryPatched) {
+      window.__jamfAutoRefreshHistoryPatched = true;
+      
+      const originalPushState = history.pushState;
+      const originalReplaceState = history.replaceState;
+      
+      history.pushState = function () {
+        const ret = originalPushState.apply(this, arguments);
+        handleUrlChange();
+        return ret;
+      };
+      history.replaceState = function () {
+        const ret = originalReplaceState.apply(this, arguments);
+        handleUrlChange();
+        return ret;
+      };
+      
+      // Add popstate listener only once
+      window.addEventListener('popstate', handleUrlChange);
+    }
 
     // Watch for Angular route changes if available
     if (window.angular) {
