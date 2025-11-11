@@ -227,25 +227,25 @@
   // Prevent duplicate instances more robustly
   const instanceId = 'cc-auto-refresh-nav';
   
-  // Check if already loaded
-  if (window.__ccAutoRefreshLoaded) {
-    console.log('[Jamf Auto-Refresh] Already loaded, skipping initialization');
-    return;
-  }
-  
-  // Remove any existing widget (cleanup from previous navigation)
+  // ALWAYS check and remove existing widgets first (even if flag not set)
   const existingWidget = document.getElementById(instanceId);
   if (existingWidget) {
     console.log('[Jamf Auto-Refresh] Removing existing widget from DOM');
     existingWidget.remove();
   }
   
-  // Also remove any orphaned modals
+  // Remove any orphaned modals
   document.querySelectorAll('div[style*="backdrop-filter: blur(4px)"]').forEach(el => {
     if (el.style.position === 'fixed' && el.style.zIndex === '999999') {
       el.remove();
     }
   });
+  
+  // Check if already loaded AFTER cleanup
+  if (window.__ccAutoRefreshLoaded && !existingWidget) {
+    console.log('[Jamf Auto-Refresh] Already loaded, skipping initialization');
+    return;
+  }
   
   window.__ccAutoRefreshLoaded = true;
 
