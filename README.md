@@ -84,7 +84,8 @@ The easiest way to configure domains is through the built-in visual interface:
 - ✅ **Real-time Feedback** - Success/error messages
 - ✅ **Auto-save** - Changes persist immediately
 
-### Manual Configuration (Advanced)
+<details>
+<summary><strong>💻 Manual Configuration (Advanced)</strong> - Code editing for power users</summary>
 
 You can also edit the configuration directly in the code:
 
@@ -117,7 +118,10 @@ const DEFAULT_ENABLED_DOMAINS = [
 
 **Note:** The visual domain manager stores settings in localStorage. If you edit the code directly, those changes will be used as defaults for new configurations.
 
-### Advanced Configuration (v2.1.0+)
+</details>
+
+<details>
+<summary><strong>⚙️ Advanced Configuration</strong> - Path patterns, regex, per-domain intervals</summary>
 
 Click the **▼** expand button on any domain to access advanced settings:
 
@@ -208,6 +212,8 @@ Enable auto-refresh only on specific pages:
 ]
 ```
 
+</details>
+
 ## Usage
 
 ### Basic Controls
@@ -215,6 +221,9 @@ Enable auto-refresh only on specific pages:
 - **Manual Refresh**: Click the 🔄 Refresh Now button to refresh immediately
 - **Toggle Auto-refresh**: Click the Enable/Disable button to turn auto-refresh on or off
 - **Change Interval**: Use the dropdown to select refresh interval (15s to 30min)
+
+<details>
+<summary><strong>📊 Additional Features</strong> - Display information and smart features</summary>
 
 ### Display Information
 The widget shows:
@@ -225,6 +234,8 @@ The widget shows:
 
 ### Keyboard Activity Detection
 The script automatically delays refresh when you're typing in forms to prevent data loss.
+
+</details>
 
 ## Version History
 
